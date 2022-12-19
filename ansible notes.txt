@@ -1,0 +1,158 @@
+Ansible- cofigration management tool
+linux launch with allow forwording
+give in user data mentioned script while launching machine
+
+#!yum install python -pip -y
+pip install ansible
+ansible -- version (2.11.12)
+
+1]creat inventry file
+
+vi slaves.txt <=give private ip of slave or eith group [web] like this
+
+install ansible config file from git search on google it
+wget url past
+ls -lrt
+ansible all -i slaves.txt -m ping  <== (i is inventry m means module)
+
+ansible  all -i slaves.txt -m yum -a "name=httpd state=present" -b (-a=action -b= become root)
+
+2]playbook=> set of instruction form of var,handlers, task,   space intendention important
+yaml= yet another markup lanuage
+
+here launch without agent forwording
+ansible all -i slaves.txt -m ping<= get permission denied 
+ssh-keygen  press enter 3 times
+we will get path copy it
+cat past path will get public key
+launch slave machin
+cd .ssh
+ll
+vi authorized_key
+bottem of prensent key you past masters public key here
+ansible all -i slaves.txt -m ping<= it will run
+playbook write
+-hosts: all
+ remote_user: ec2-user
+ become: yes
+  tasks:
+    - name: going to install
+      yum:
+          name: httpd
+          state: present
+    - name: going to start webserver
+      service:
+          name: httpd
+          state: started
+   
+vi apache.yml
+ansible-playbook -i saves.yml -m <= run
+
+3]security
+ansible-vault encrypt apche.yml<=give password
+ansible-vault edit apche.yml
+ansible-vault rekey apche.yml
+
+4]chane parameter also in yml script jinja file
+
+- hosts: all
+  remote_user: ec2-user
+  become: yes
+  vars:
+     tomcat_port: 9000
+  tasks:
+    - name: Update all the packages
+      yum:
+        name: "*"
+        state: present
+    - name: Install java
+      yum:
+        name: java-1.8.0-openjdk
+        state: present
+    - name: download the apache tomcat webserver
+      get_url:
+        url: https://dlcdn.apache.org/tomcat/tomcat-10/v10.0.27/bin/apache-tomcat-10.0.27.zip
+        dest: /usr/local
+        mode: '0777'
+    - name: unarchiving the apache tomcat webserver
+      unarchive:
+        src: /usr/local/apache-tomcat-10.0.27.zip
+        dest: /usr/local
+        remote_src: True
+        mode: '0777'
+    - name: start the tomcat
+      shell: nohup /usr/local/apache-tomcat-10.0.27.zip/bin/startup.sh &
+   
+
+change port in server.xml file 8080>9999
+enter in slave using master only
+ec2-user@past priv ip of slave
+cd usr/local
+ll
+cd apache-tomcat
+ll
+ cd conf
+vi server.xml<=change port here
+cp server.xml
+cd /tmp
+ll
+if ask root permission only give chown ec2-user:ec2-user server.xml
+sudo su -
+cd /usr/local
+ps -ef | grep tomcat
+kill -9 past process id
+exit
+ll
+exit
+ec2-user@past priv ip of slave:/tmp/server.xml
+mv server.xml server.xml.j2
+vi server.xml.j2
+server or connector port {{tomcat-port}} save <=which you mentioned in script
+restart palybook and run
+
+
+
+5] ansible-galaxy init myproject
+ll
+ls -lrt<= all modules can see
+sudo yum install tree -y
+cd ..
+tree my project<=====(you cant see all modules and give all modules inditually)
+
+
+deployment step added=>
+
+- hosts: all
+  remote_user: ec2-user
+  become: yes
+  vars:
+     tomcat_port: 9000
+  tasks:
+    - name: Update all the packages
+      yum:
+        name: "*"
+        state: present
+    - name: Install java
+      yum:
+        name: java-1.8.0-openjdk
+        state: present
+    - name: download the apache tomcat webserver
+      get_url:
+        url: https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.58/bin/apache-tomcat-9.0.58.zip
+        dest: /usr/local
+        mode: '0777'
+    - name: unarchiving the apache tomcat webserver
+      unarchive:
+        src: /usr/local/apache-tomcat-9.0.58.zip
+        dest: /usr/local
+        remote_src: True
+        mode: '0777'
+    - name: change the parameter in conf file
+      template:
+        src: ./server.xml.j2
+        dest: /usr/local/apache-tomcat-9.0.58.zip/conf/server.xml
+    - name: start the tomcat
+      shell: nohup /usr/local/apache-tomcat-9.0.58.zip/bin/startup.sh &
+    - name: move the file
+          src: ./sample.war
+          dest: /usr/local/apache-tomcat-9.0.58.zip/webapps/sample.war
